@@ -18,8 +18,8 @@
         });
 
         // サイズ指定
-        const width = 745;
-        const height = 540;
+        const width = 960;
+        const height = 1000;
         renderer.setPixelRatio(window.devicePixelRatio);
         renderer.setSize(width, height);
        // シーンを作成
@@ -27,14 +27,26 @@
     scene.background = new THREE.Color( 0x87B8C0 );//背景色を指定
       // 環境光源を作成
     const ambientLight = new THREE.AmbientLight(0xffffff);
-    ambientLight.intensity = 0.5;
+    ambientLight.intensity = 1;
     scene.add(ambientLight);
  
-    // 平行光源を作成
-    const directionalLight = new THREE.DirectionalLight(0xffffff);
-    directionalLight.intensity = 0.5;
-    directionalLight.position.set(0, 3, 6); //x,y,zの位置を指定
-    scene.add(directionalLight);
+    // 環境光源を作成
+    const ambientLight1 = new THREE.AmbientLight(0xffffff);
+    ambientLight1.intensity = 0.5;
+    scene.add(ambientLight1);
+    
+
+    // 平行光源を作成1
+    const directionalLight1 = new THREE.DirectionalLight(0xffffff);
+    directionalLight1.intensity = 1;
+    directionalLight1.position.set(-6, -6, 6); //x,y,zの位置を指定
+    scene.add(directionalLight1);
+    // 平行光源を作成2
+    const directionalLight2 = new THREE.DirectionalLight(0xffffff);
+    directionalLight2.intensity = 1;
+    directionalLight2.position.set(6, 6, 6); //x,y,zの位置を指定
+    scene.add(directionalLight2);
+
        // カメラを作成
     const camera = new THREE.PerspectiveCamera(45, width / height, 1, 10000);
     camera.position.set(0, 0, 1500);
@@ -47,10 +59,10 @@
 	let model = null;
     loader.load(
   //3Dモデルファイルのパスを指定
-        'model/all-glb.glb',
+        'model/all-glb2.glb',
         function (glb) {
             model = glb.scene;
-            model.name = "model_castle";
+            model.name = "daisya";
             model.scale.set(80.0, 80.0, 80.0);
             model.position.set(0,-200,0);
             scene.add( glb.scene );
