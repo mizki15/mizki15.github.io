@@ -18,8 +18,8 @@
         });
 
         // サイズ指定
-        const width = 960;
-        const height = 1000;
+        const width = 1000;
+        const height = 600;
         renderer.setPixelRatio(window.devicePixelRatio);
         renderer.setSize(width, height);
        // シーンを作成
@@ -27,7 +27,7 @@
     scene.background = new THREE.Color( 0x87B8C0 );//背景色を指定
       // 環境光源を作成
     const ambientLight = new THREE.AmbientLight(0xffffff);
-    ambientLight.intensity = 1;
+    ambientLight.intensity = 0.5;
     scene.add(ambientLight);
  
     // 環境光源を作成
