@@ -27,23 +27,23 @@
     scene.background = new THREE.Color( 0x87B8C0 );//背景色を指定
       // 環境光源を作成
     const ambientLight = new THREE.AmbientLight(0xffffff);
-    ambientLight.intensity = 0.1;
+    ambientLight.intensity = 0.3;
     scene.add(ambientLight);
  
     // 環境光源を作成
     const ambientLight1 = new THREE.AmbientLight(0xffffff);
-    ambientLight1.intensity = 0.1;
+    ambientLight1.intensity = 0.3;
     scene.add(ambientLight1);
     
 
     // 平行光源を作成1
     const directionalLight1 = new THREE.DirectionalLight(0xffffff);
-    directionalLight1.intensity = 0.1;
+    directionalLight1.intensity = 0.3;
     directionalLight1.position.set(-6, -6, 6); //x,y,zの位置を指定
     scene.add(directionalLight1);
     // 平行光源を作成2
     const directionalLight2 = new THREE.DirectionalLight(0xffffff);
-    directionalLight2.intensity = 0.1;
+    directionalLight2.intensity = 0.3;
     directionalLight2.position.set(6, 6, 6); //x,y,zの位置を指定
     scene.add(directionalLight2);
 
