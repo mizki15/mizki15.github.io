@@ -30,21 +30,15 @@
     ambientLight.intensity = 0.3;
     scene.add(ambientLight);
  
-    // 環境光源を作成
-    const ambientLight1 = new THREE.AmbientLight(0xffffff);
-    ambientLight1.intensity = 0.3;
-    scene.add(ambientLight1);
-    
-
     // 平行光源を作成1
     const directionalLight1 = new THREE.DirectionalLight(0xffffff);
-    directionalLight1.intensity = 0.3;
-    directionalLight1.position.set(-6, -6, 6); //x,y,zの位置を指定
+    directionalLight1.intensity = 0.7;
+    directionalLight1.position.set(-20, -20, 20); //x,y,zの位置を指定
     scene.add(directionalLight1);
     // 平行光源を作成2
     const directionalLight2 = new THREE.DirectionalLight(0xffffff);
     directionalLight2.intensity = 0.3;
-    directionalLight2.position.set(6, 6, 6); //x,y,zの位置を指定
+    directionalLight2.position.set(20, 20, 20); //x,y,zの位置を指定
     scene.add(directionalLight2);
 
        // カメラを作成
@@ -59,7 +53,7 @@
 	let model = null;
     loader.load(
   //3Dモデルファイルのパスを指定
-        'model/6B外装 2.glb',
+        'model/教室.glb',
         function (glb) {
             model = glb.scene;
             model.name = "daisya";
