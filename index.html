@@ -27,19 +27,25 @@
     scene.background = new THREE.Color( 0x87B8C0 );//背景色を指定
       // 環境光源を作成
     const ambientLight = new THREE.AmbientLight(0xffffff);
-    ambientLight.intensity = 0.3;
+    ambientLight.intensity = 3.0;
     scene.add(ambientLight);
  
     // 平行光源を作成1
     const directionalLight1 = new THREE.DirectionalLight(0xffffff);
     directionalLight1.intensity = 0.7;
-    directionalLight1.position.set(-20, -20, 20); //x,y,zの位置を指定
+    directionalLight1.position.set(-20, 20, 20); //x,y,zの位置を指定
     scene.add(directionalLight1);
     // 平行光源を作成2
     const directionalLight2 = new THREE.DirectionalLight(0xffffff);
-    directionalLight2.intensity = 0.3;
-    directionalLight2.position.set(20, 20, 20); //x,y,zの位置を指定
+    directionalLight2.intensity = 0.7;
+    directionalLight2.position.set(20, -20, 20); //x,y,zの位置を指定
     scene.add(directionalLight2);
+	    // 平行光源を作成3
+    const directionalLight3 = new THREE.DirectionalLight(0xffffff);
+    directionalLight3.intensity = 0.7;
+    directionalLight3.position.set(20, 20, -20); //x,y,zの位置を指定
+    scene.add(directionalLight3);
+	    
 
        // カメラを作成
     const camera = new THREE.PerspectiveCamera(45, width / height, 1, 10000);
@@ -57,7 +63,7 @@
         function (glb) {
             model = glb.scene;
             model.name = "daisya";
-            model.scale.set(50.0, 50.0, 50.0);
+            model.scale.set(75.0,75.0,75.0);
             model.position.set(0,-200,0);
             scene.add( glb.scene );
         },
