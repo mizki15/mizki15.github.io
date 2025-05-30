@@ -2,343 +2,160 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8" />
-  <title>Detail View with Edge Length and Highlight</title>
-  <style>
-    body { margin: 0; overflow: hidden; }
-    .label {
-      color: white;
-      font-size: 12px;
-      font-weight: bold;
-      text-shadow: 0 0 3px black;
-      pointer-events: none;
-      user-select: none;
-      white-space: nowrap;
-    }
-  </style>
+  <title>Three.js GLTF ダブルクリック遷移＋ホバー枠表示</title>
+  <style> body { margin:0; overflow:hidden; } </style>
+
+  <!-- importmap -->
   <script type="importmap">
   {
     "imports": {
       "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
       "three/examples/jsm/controls/OrbitControls.js": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/controls/OrbitControls.js",
-      "three/examples/jsm/loaders/GLTFLoader.js": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/loaders/GLTFLoader.js",
-      "three/examples/jsm/renderers/CSS2DRenderer.js": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/renderers/CSS2DRenderer.js"
+      "three/examples/jsm/loaders/GLTFLoader.js": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/loaders/GLTFLoader.js"
     }
   }
   </script>
 </head>
 <body>
-<script type="module">
-import * as THREE from 'three';
-import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
-import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
-import { CSS2DRenderer, CSS2DObject } from 'three/examples/jsm/renderers/CSS2DRenderer.js';
+  <script type="module">
+    import * as THREE from 'three';
+    import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
+    import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 
-const scene = new THREE.Scene();
-const camera = new THREE.PerspectiveCamera(50, window.innerWidth/window.innerHeight, 0.1, 1000);
-camera.position.set(2, 2, 2);
+    // シーン・カメラ・レンダラー
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x87ceeb);
 
-const renderer = new THREE.WebGLRenderer({antialias:true});
-renderer.setSize(window.innerWidth, window.innerHeight);
-document.body.appendChild(renderer.domElement);
+    const camera = new THREE.PerspectiveCamera(50, window.innerWidth/window.innerHeight, 0.1, 1000);
+    camera.position.set(2, 2, 2);
 
-const labelRenderer = new CSS2DRenderer();
-labelRenderer.setSize(window.innerWidth, window.innerHeight);
-labelRenderer.domElement.style.position = 'absolute';
-labelRenderer.domElement.style.top = '0px';
-labelRenderer.domElement.style.pointerEvents = 'none';
-document.body.appendChild(labelRenderer.domElement);
+    const renderer = new THREE.WebGLRenderer({antialias:true});
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    document.body.appendChild(renderer.domElement);
 
-const controls = new OrbitControls(camera, renderer.domElement);
+    const controls = new OrbitControls(camera, renderer.domElement);
 
-// URLからパラメータを取得
-function getQueryParam(param) {
-  const urlParams = new URLSearchParams(window.location.search);
-  return urlParams.get(param);
-}
-const targetName = getQueryParam('object');
+    // ライト
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.3);
+    scene.add(ambientLight);
 
-const loader = new GLTFLoader();
+    const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+    directionalLight.position.set(5, 10, 7);
+    directionalLight.castShadow = true;
+    directionalLight.shadow.mapSize.width = 1024;
+    directionalLight.shadow.mapSize.height = 1024;
+    scene.add(directionalLight);
 
-let gltfScene = null;
-const meshList = [];
-const labelObjects = [];
-const highlightEdges = [];
+    const pointLight = new THREE.PointLight(0xffeecc, 0.5);
+    pointLight.position.set(-5, 3, 5);
+    scene.add(pointLight);
 
-const highlightMaterial = new THREE.LineBasicMaterial({ color: 0xffaa00 });
+    const hemiLight = new THREE.HemisphereLight(0xaaaaaa, 0x444444, 0.4);
+    hemiLight.position.set(0, 20, 0);
+    scene.add(hemiLight);
 
-loader.load('model.glb', (gltf) => {
-  gltfScene = gltf.scene;
-  scene.add(gltfScene);
+    // GLTFLoaderでモデル読み込み
+    const loader = new GLTFLoader();
+    let meshList = [];
 
-  gltfScene.traverse(child => {
-    if (child.isMesh) {
-      meshList.push(child);
-      child.castShadow = true;
-      child.receiveShadow = true;
-      child.visible = false;  // 一旦全非表示
-    }
-  });
+    loader.load('model.glb', (gltf) => {
+      scene.add(gltf.scene);
 
-  if (targetName) {
-    // 指定の名前のメッシュだけ表示
-    const targetMesh = meshList.find(m => m.name === targetName || m.uuid === targetName);
-    if (targetMesh) {
-      targetMesh.visible = true;
-
-      // カメラとcontrolsのターゲットセット
-      const box = new THREE.Box3().setFromObject(targetMesh);
-      const center = box.getCenter(new THREE.Vector3());
-      controls.target.copy(center);
-      controls.update();
-      camera.position.copy(center).add(new THREE.Vector3(1.5, 1.5, 1.5));
-
-      // 辺の長さラベル＆ライン表示
-      addEdgeLabelsAndHighlight(targetMesh);
-    }
-  } else {
-    // パラメータなしなら全部表示
-    gltfScene.visible = true;
-
-    // 全メッシュ分のエッジラベル・ハイライトもつけたいならこちら
-    // meshList.forEach(mesh => addEdgeLabelsAndHighlight(mesh));
-  }
-});
-
-// 辺の長さラベルとハイライト用ラインを追加する関数
-function addEdgeLabelsAndHighlight(mesh) {
-  const geometry = mesh.geometry;
-  if (!geometry.index) return;
-
-  const position = geometry.attributes.position;
-  const index = geometry.index;
-
-  // 1. 面法線計算はそのまま
-  const faceNormals = [];
-  for (let i = 0; i < index.count; i += 3) {
-    const a = new THREE.Vector3().fromBufferAttribute(position, index.getX(i));
-    const b = new THREE.Vector3().fromBufferAttribute(position, index.getX(i + 1));
-    const c = new THREE.Vector3().fromBufferAttribute(position, index.getX(i + 2));
-    const edge1 = new THREE.Vector3().subVectors(b, a);
-    const edge2 = new THREE.Vector3().subVectors(c, a);
-    const normal = new THREE.Vector3().crossVectors(edge1, edge2).normalize();
-    faceNormals.push(normal);
-  }
-
-  // 2. エッジごとの隣接面情報マップ
-  const edgeToFaces = new Map();
-  for (let faceIndex = 0; faceIndex < index.count; faceIndex += 3) {
-    const ia = index.getX(faceIndex);
-    const ib = index.getX(faceIndex + 1);
-    const ic = index.getX(faceIndex + 2);
-    const edges = [
-      [ia, ib],
-      [ib, ic],
-      [ic, ia],
-    ];
-    edges.forEach(e => {
-      const sorted = e.slice().sort((a, b) => a - b);
-      const key = sorted.join('_');
-      if (!edgeToFaces.has(key)) edgeToFaces.set(key, []);
-      edgeToFaces.get(key).push(faceIndex / 3);
+      gltf.scene.traverse(child => {
+        if(child.isMesh){
+          child.castShadow = true;
+          child.receiveShadow = true;
+          meshList.push(child);
+        }
+      });
     });
-  }
 
-  // 3. シャープエッジ判定用のエッジリストを作る（今までのshowEdge条件を満たすもの）
-  const sharpEdges = [];
-  const thresholdAngle = THREE.MathUtils.degToRad(30);
-  edgeToFaces.forEach((faces, edgeKey) => {
-    const [i1, i2] = edgeKey.split('_').map(Number);
-    if (faces.length === 1) {
-      sharpEdges.push([i1, i2]);
-    } else if (faces.length === 2) {
-      const normal1 = faceNormals[faces[0]];
-      const normal2 = faceNormals[faces[1]];
-      const angle = normal1.angleTo(normal2);
-      if (angle >= thresholdAngle) {
-        sharpEdges.push([i1, i2]);
+    // Raycasterとマウス位置の初期化
+    const raycaster = new THREE.Raycaster();
+    const mouse = new THREE.Vector2();
+
+    // ハイライト用アウトラインオブジェクト
+    let outlineMesh = null;
+
+    // クリック防止と遷移はdblclickイベントにて
+    window.addEventListener('dblclick', (event) => {
+      event.preventDefault(); // 拡大防止などブラウザのデフォルト動作をキャンセル
+
+      mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+      mouse.y = - (event.clientY / window.innerHeight) * 2 + 1;
+
+      raycaster.setFromCamera(mouse, camera);
+      const intersects = raycaster.intersectObjects(meshList, true);
+
+      if(intersects.length > 0){
+        const selected = intersects[0].object;
+        const name = selected.name || selected.uuid;
+        window.location.href = `detail.html?object=${encodeURIComponent(name)}`;
       }
-    }
-  });
+    });
 
-  // 4. 同一直線上のエッジをまとめるために、まずエッジの方向ベクトルを計算する関数
-  function getEdgeDirection(i1, i2) {
-    const v1 = new THREE.Vector3().fromBufferAttribute(position, i1);
-    const v2 = new THREE.Vector3().fromBufferAttribute(position, i2);
-    return new THREE.Vector3().subVectors(v2, v1).normalize();
-  }
+    // ホバー処理
+    window.addEventListener('mousemove', (event) => {
+      mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+      mouse.y = - (event.clientY / window.innerHeight) * 2 + 1;
 
-  // 5. 頂点座標の取得関数（ワールド座標変換込み）
-  function getWorldVertex(i) {
-    const v = new THREE.Vector3().fromBufferAttribute(position, i);
-    mesh.localToWorld(v);
-    return v;
-  }
+      raycaster.setFromCamera(mouse, camera);
+      const intersects = raycaster.intersectObjects(meshList, true);
 
-  // 6. エッジのグルーピング
-  //    - 頂点をノードとするグラフを作成し、
-  //    - 同一直線上かつ隣接するエッジをつなげていく
-  //    - 方向ベクトルの角度差が5度以内なら同一直線上とみなす
-  const adjacency = new Map(); // key: vertex index, value: array of connected vertex indices
+      if(intersects.length > 0){
+        const hovered = intersects[0].object;
 
-  sharpEdges.forEach(([i1, i2]) => {
-    if (!adjacency.has(i1)) adjacency.set(i1, []);
-    if (!adjacency.has(i2)) adjacency.set(i2, []);
-    adjacency.get(i1).push(i2);
-    adjacency.get(i2).push(i1);
-  });
+        // 既にアウトライン表示中で同じなら処理しない
+        if(outlineMesh && outlineMesh.userData.source === hovered) return;
 
-  const visitedEdges = new Set();
-  const groups = [];
+        // 以前のアウトライン削除
+        if(outlineMesh){
+          scene.remove(outlineMesh);
+          outlineMesh.geometry.dispose();
+          outlineMesh.material.dispose();
+          outlineMesh = null;
+        }
 
-  // エッジごとに探索してグループ化
-  function edgeKey(i1, i2) {
-    return i1 < i2 ? `${i1}_${i2}` : `${i2}_${i1}`;
-  }
+        // EdgesGeometryでアウトライン作成
+        const edges = new THREE.EdgesGeometry(hovered.geometry);
+        outlineMesh = new THREE.LineSegments(
+          edges,
+          new THREE.LineBasicMaterial({ color: 0xffff00, linewidth: 2 })
+        );
+        outlineMesh.position.copy(hovered.position);
+        outlineMesh.quaternion.copy(hovered.quaternion);
+        outlineMesh.scale.copy(hovered.scale);
 
-  // 指定のエッジが同一直線上かを判定
-  function isSameLine(i1, i2, i3) {
-    // i1-i2とi2-i3の方向ベクトルの角度を計算し、閾値以下ならtrue
-    const dir1 = getEdgeDirection(i1, i2);
-    const dir2 = getEdgeDirection(i2, i3);
-    const angle = dir1.angleTo(dir2);
-    return angle < THREE.MathUtils.degToRad(5); // 5度閾値
-  }
+        outlineMesh.userData.source = hovered; // 参照保存
+        scene.add(outlineMesh);
 
-  // グループ探索: あるエッジを起点に同一直線上の連続エッジを深さ優先で探索
-  function dfsGroup(startI1, startI2) {
-    const groupEdges = [];
-    const stack = [[startI1, startI2]];
-    visitedEdges.add(edgeKey(startI1, startI2));
-
-    while (stack.length > 0) {
-      const [currentI1, currentI2] = stack.pop();
-      groupEdges.push([currentI1, currentI2]);
-
-      // currentI2の隣接頂点を探索
-      const neighbors = adjacency.get(currentI2);
-      if (!neighbors) continue;
-
-      for (const nextI of neighbors) {
-        const eKey = edgeKey(currentI2, nextI);
-        if (visitedEdges.has(eKey)) continue;
-
-        // currentI1-currentI2-nextI が同一直線上か確認
-        if (isSameLine(currentI1, currentI2, nextI)) {
-          visitedEdges.add(eKey);
-          stack.push([currentI2, nextI]);
-          break; // 連続した線分として続けるのは一方向だけでOK
+      } else {
+        // ホバー外れたらアウトライン削除
+        if(outlineMesh){
+          scene.remove(outlineMesh);
+          outlineMesh.geometry.dispose();
+          outlineMesh.material.dispose();
+          outlineMesh = null;
         }
       }
-    }
-    return groupEdges;
-  }
-
-  // グルーピング実行
-  sharpEdges.forEach(([i1, i2]) => {
-    if (!visitedEdges.has(edgeKey(i1, i2))) {
-      const group = dfsGroup(i1, i2);
-      groups.push(group);
-    }
-  });
-
-  // 7. グループごとに、端点のワールド座標を探し、長さを計算してラベル・ハイライト表示
-  groups.forEach(group => {
-    // グループに含まれる頂点の集合を作成
-    const verticesSet = new Set();
-    group.forEach(([a, b]) => { verticesSet.add(a); verticesSet.add(b); });
-
-    // グループ内の頂点を配列化
-    const vertices = Array.from(verticesSet);
-
-    // 頂点同士の接続マップ（グループ内のみ）
-    const localAdj = new Map();
-    vertices.forEach(v => localAdj.set(v, []));
-    group.forEach(([a,b]) => {
-      localAdj.get(a).push(b);
-      localAdj.get(b).push(a);
     });
 
-    // 端点（隣接頂点数が1つだけの頂点）を探す
-    const endpoints = vertices.filter(v => localAdj.get(v).length === 1);
-    if (endpoints.length < 2) {
-      // ループなどの場合は適当に一つ選んで、そこから連結頂点を経路順に並べる必要あり
-      // ここでは簡易的にverticesをそのまま使う
-      endpoints.push(vertices[0]);
-      endpoints.push(vertices[vertices.length-1]);
+    // リサイズ対応
+    window.addEventListener('resize', () => {
+      camera.aspect = window.innerWidth/window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+    });
+
+    // アニメーションループ
+    function animate(){
+      requestAnimationFrame(animate);
+      controls.update();
+      renderer.render(scene, camera);
     }
-
-    const start = endpoints[0];
-    const end = endpoints[1];
-
-    // 順序付けられた頂点列を作成（startからendまでの経路探索）
-    const orderedVertices = [];
-    let current = start;
-    let prev = null;
-    while (current !== end) {
-      orderedVertices.push(current);
-      const neighbors = localAdj.get(current).filter(n => n !== prev);
-      if (neighbors.length === 0) break;
-      prev = current;
-      current = neighbors[0];
-    }
-    orderedVertices.push(end);
-
-    // 頂点配列からワールド座標配列へ
-    const points = orderedVertices.map(i => getWorldVertex(i));
-
-    // 長さ計算（端点間の距離）
-    const length = points[0].distanceTo(points[points.length -1]);
-
-    // 中点計算
-    const mid = new THREE.Vector3();
-    points.forEach(p => mid.add(p));
-    mid.multiplyScalar(1 / points.length);
-
-    // ラベル表示
-    const div = document.createElement('div');
-    div.className = 'label';
-    if (length > 0.01) {div.textContent = length.toFixed(2);}
-    else {}
-    
-    div.style.color = 'yellow';
-    div.style.fontWeight = 'bold';
-    div.style.textShadow = '0 0 3px black';
-
-    const label = new CSS2DObject(div);
-    label.position.copy(mid);
-    scene.add(label);
-    labelObjects.push(label);
-
-    // ハイライト表示（一本の線として）
-    const lineGeometry = new THREE.BufferGeometry().setFromPoints(points);
-    const line = new THREE.Line(lineGeometry, highlightMaterial);
-    scene.add(line);
-    highlightEdges.push(line);
-    
-  });
-}
-
-
-
-const light = new THREE.DirectionalLight(0xffffff, 1);
-light.position.set(5,5,5);
-scene.add(light);
-
-window.addEventListener('resize', () => {
-  camera.aspect = window.innerWidth/window.innerHeight;
-  camera.updateProjectionMatrix();
-  renderer.setSize(window.innerWidth, window.innerHeight);
-  labelRenderer.setSize(window.innerWidth, window.innerHeight);
-});
-
-function animate() {
-  requestAnimationFrame(animate);
-  controls.update();
-  renderer.render(scene, camera);
-  labelRenderer.render(scene, camera);
-}
-
-animate();
-</script>
+    animate();
+  </script>
 </body>
 </html>
